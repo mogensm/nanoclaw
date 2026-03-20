@@ -367,9 +367,13 @@ async function runQuery(
   let resultCount = 0;
 
   // Load global CLAUDE.md as additional system context (shared across all groups)
+  // Load system prompt append: group CLAUDE.md for main, global for others
   const globalClaudeMdPath = '/workspace/global/CLAUDE.md';
+  const groupClaudeMdPath = '/workspace/group/CLAUDE.md';
   let globalClaudeMd: string | undefined;
-  if (!containerInput.isMain && fs.existsSync(globalClaudeMdPath)) {
+  if (containerInput.isMain && fs.existsSync(groupClaudeMdPath)) {
+    globalClaudeMd = fs.readFileSync(groupClaudeMdPath, 'utf-8');
+  } else if (!containerInput.isMain && fs.existsSync(globalClaudeMdPath)) {
     globalClaudeMd = fs.readFileSync(globalClaudeMdPath, 'utf-8');
   }
 

@@ -8,7 +8,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     git \
     libheif-examples \
-    && rm -rf /var/lib/apt/lists/*
+    locales \
+    && rm -rf /var/lib/apt/lists/* \
+    && sed -i '/en_US.UTF-8/s/^# //' /etc/locale.gen \
+    && locale-gen
+
+ENV LANG=en_US.UTF-8
+ENV LC_ALL=en_US.UTF-8
 
 # Install claude-code globally (no agent-browser)
 RUN npm install -g @anthropic-ai/claude-code
