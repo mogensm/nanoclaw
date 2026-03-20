@@ -29,6 +29,7 @@ export interface AllowedRoot {
 
 export interface ContainerConfig {
   additionalMounts?: AdditionalMount[];
+  forwardEnv?: string[]; // Env var names from .env to forward into containers
   timeout?: number; // Default: 300000 (5 minutes)
 }
 

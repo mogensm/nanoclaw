@@ -16,6 +16,7 @@ import {
   IDLE_TIMEOUT,
   TIMEZONE,
 } from './config.js';
+import { readEnvFile } from './env.js';
 import { resolveGroupFolderPath, resolveGroupIpcPath } from './group-folder.js';
 import { logger } from './logger.js';
 import {
@@ -215,11 +216,29 @@ function buildVolumeMounts(
 function buildContainerArgs(
   mounts: VolumeMount[],
   containerName: string,
+  group?: RegisteredGroup,
 ): string[] {
   const args: string[] = ['run', '-i', '--rm', '--name', containerName];
 
   // Pass host timezone so container's local time matches the user's
   args.push('-e', `TZ=${TIMEZONE}`);
+
+  // Forward additional env vars from host .env into the container.
+  // Used for skill credentials (Gmail API, Spond, Google Vision, etc.)
+  // that the credential proxy doesn't handle.
+  // Reads directly from .env file (not process.env) to respect NanoClaw's
+  // design of keeping secrets out of the host process environment.
+  if (group?.containerConfig?.forwardEnv) {
+    const envVals = readEnvFile(group.containerConfig.forwardEnv);
+    for (const key of group.containerConfig.forwardEnv) {
+      const val = envVals[key];
+      if (val) {
+        args.push('-e', `${key}=${val}`);
+      } else {
+        logger.warn({ key, group: group?.name }, 'forwardEnv: variable not set in .env, skipping');
+      }
+    }
+  }
 
   // Route API traffic through the credential proxy (containers never see real secrets)
   args.push(
@@ -278,7 +297,7 @@ export async function runContainerAgent(
   const mounts = buildVolumeMounts(group, input.isMain);
   const safeName = group.folder.replace(/[^a-zA-Z0-9-]/g, '-');
   const containerName = `nanoclaw-${safeName}-${Date.now()}`;
-  const containerArgs = buildContainerArgs(mounts, containerName);
+  const containerArgs = buildContainerArgs(mounts, containerName, group);
 
   logger.debug(
     {
